@@ -1,5 +1,7 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using MJDeveloping.Games.Unity.JetFighter;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -20,8 +22,13 @@ public class PlayerController : MonoBehaviour
 
     [Header("Facing Angles")]
     [SerializeReference] COMPASS compass;
+    [SerializeField] Transform shooter;
+    [SerializeField] Transform firedShots;
     
-    
+    private void Awake() {
+        myGM = GameManager.Instance;
+        firedShots = myGM.projectileParent.transform;
+    }    
 
     public void SetPlayerColour (Color colour){
         playerColour = colour;
@@ -30,20 +37,50 @@ public class PlayerController : MonoBehaviour
     void Start()
     {
         myRB = GetComponent<Rigidbody2D>();
+        
     }
 
     // Update is called once per frame
     void Update()
     {
         CheckForInput();
-        ApplyMovement();       
-        //ApplyRotation();                        
-        if(zAxisRotationInput != 0){
-        print(zAxisRotationInput);
-        }
+        ApplyMovement();
+        CheckPosition();       
 
-        if(Keyboard.current.tabKey.wasPressedThisFrame){
-            print("Current Rotation is: "+ transform.rotation);
+        //ApplyRotation();                        
+        // if(zAxisRotationInput != 0){
+        // print(zAxisRotationInput);
+        // }
+
+        // if(Keyboard.current.tabKey.wasPressedThisFrame){
+        //     print("Current Rotation is: "+ transform.rotation);
+        // }
+    }
+
+    private void CheckPosition()
+    {        
+        float gameHeight = 6f;        
+        float gameWidth = 7.4f;        
+        //print(gameHeight + " , " + gameWidth);       
+        if(transform.position.y > gameHeight || transform.position.y < -gameHeight){
+            //print("Exited from Top or Bottom.");            
+            if(transform.position.y > gameHeight){
+                //print("Exited from Top.");                
+                transform.position = new Vector3(transform.position.x, -gameHeight, transform.position.z);
+            } else{
+                //print("Exited From Bottom");
+                transform.position = new Vector3(transform.position.x, gameHeight, transform.position.z);
+            }
+        }
+        if(transform.position.x > gameWidth || transform.position.x < -gameWidth){
+            //Exited from left or right
+            if(transform.position.x > gameWidth){
+                //Exited from right
+                transform.position = new Vector3(-gameWidth, transform.position.y, transform.position.z);
+            }else{
+                //Exited from left
+                transform.position = new Vector3(gameWidth, transform.position.y,transform.position.z);
+            }
         }
     }
 
@@ -137,8 +174,10 @@ public class PlayerController : MonoBehaviour
 
     void Shoot(){
         
-        GameObject projectile = Instantiate(projectilePrefab, transform.position, transform.rotation);
+        GameObject projectile = Instantiate(projectilePrefab, shooter.transform.position, transform.rotation);
         projectile.GetComponent<SpriteRenderer>().color = playerColour;
+        projectile.transform.SetParent(firedShots,true);
+        projectile.name = gameObject.name +"'s Projectile";
         Rigidbody2D projectileRB = projectile.GetComponent<Rigidbody2D>();
         // if(myRB.velocity.x == 0 && myRB.velocity.y == 0){
         //     Debug.Log("x and y is 0");
@@ -152,8 +191,9 @@ public class PlayerController : MonoBehaviour
 
     }
 
-    void ApplyMovement(){
+    void ApplyMovement(){               
         myRB.velocity = new Vector2(horizontalMovementInput,verticalMovementInput) * Time.fixedDeltaTime * movementSpeed;
+        
         // Transform oldRotation = myRB.transform;
         // myRB.transform.rotation = new Quaternion(horizontalMovementInput, verticalMovementInput, 0, 0);
         // oldRotation = myRB.transform;
@@ -169,6 +209,16 @@ public class PlayerController : MonoBehaviour
     //     print(gameObject.transform.rotation);
     // }
     
+    private void OnTriggerEnter2D(Collider2D other) {
+        if(other.gameObject.CompareTag("Projectile")){
+            if(other.transform.name == "Player Black's Projectile"){
+                myGM.ScoreManager.PlayerBlackScore++;
+            } else if(other.transform.name == "Player White's Projectile"){
+                myGM.ScoreManager.PlayerWhiteScore++;
+            }
+            Destroy(other.gameObject);
+        }
+    }
 }
 
 public enum COMPASS{
